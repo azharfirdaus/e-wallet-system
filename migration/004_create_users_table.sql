@@ -1,0 +1,10 @@
+CREATE TABLE public.users (
+    id BIGSERIAL PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER set_users_updated_at
+BEFORE UPDATE ON public.users
+FOR EACH ROW
+EXECUTE FUNCTION public.set_updated_at();
