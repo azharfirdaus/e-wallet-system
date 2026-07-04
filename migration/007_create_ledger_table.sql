@@ -1,4 +1,4 @@
-CREATE TYPE public.ledger_operation AS ENUM (
+CREATE TYPE public.ledger_referrence AS ENUM (
     'TOPUP',
     'PAYMENT',
     'SEND',
