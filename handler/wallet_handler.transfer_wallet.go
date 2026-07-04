@@ -14,7 +14,8 @@ import (
 )
 
 func (h *WalletHandler) TransferWalletHandler(w http.ResponseWriter, r *http.Request) {
-	walletID, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	vars := mux.Vars(r)
+	walletID, err := strconv.ParseInt(vars["id"], 10, 64)
 	if err != nil || walletID <= 0 {
 		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
@@ -25,33 +26,22 @@ func (h *WalletHandler) TransferWalletHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if request.ToWalletID <= 0 {
-		http.Error(w, "to_wallet_id is required", http.StatusBadRequest)
+	if request.WalletIDDestination <= 0 {
+		http.Error(w, "wallet_id_destination is required", http.StatusBadRequest)
 		return
 	}
-	if request.ToWalletID == walletID {
-		http.Error(w, "to_wallet_id must be different from wallet id", http.StatusBadRequest)
-		return
-	}
-
-	amount, err := helper.ParseAmountMinorUnit(request.Amount)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-
-	currency, err := parseCurrency(request.CurrencyCode)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
-		return
-	}
-	if err := validateAmountLimit(amount, currency); err != nil {
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+	if request.WalletIDDestination == walletID {
+		http.Error(w, "wallet_id_destination must be different from wallet id", http.StatusBadRequest)
 		return
 	}
 
 	trx, err := h.db.Beginx()
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := acquireWalletWriteLock(trx); err != nil {
+		_ = trx.Rollback()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -72,7 +62,7 @@ func (h *WalletHandler) TransferWalletHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	toWallet, err := h.walletRepository.FindByID(trx, request.ToWalletID)
+	toWallet, err := h.walletRepository.FindByID(trx, request.WalletIDDestination)
 	if err != nil {
 		_ = trx.Rollback()
 		if errors.Is(err, sql.ErrNoRows) {
@@ -88,7 +78,37 @@ func (h *WalletHandler) TransferWalletHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	fromWalletCurrency, err := h.walletCurrencyRepository.FindByWalletIDAndCurrency(trx, walletID, currency)
+	amount, err := helper.ParseAmountMinorUnit(request.Amount)
+	if err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	sourceCurrency, err := parseCurrency(vars["country_code"])
+	if err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	destinationCurrency, err := parseCurrency(request.CurrencyCodeDestination)
+	if err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+	if sourceCurrency != destinationCurrency {
+		_ = trx.Rollback()
+		http.Error(w, "currency code source and destination are different", http.StatusUnprocessableEntity)
+		return
+	}
+	if err := validateAmountLimit(amount, sourceCurrency); err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	fromWalletCurrency, err := h.walletCurrencyRepository.FindByWalletIDAndCurrency(trx, walletID, sourceCurrency)
 	if err != nil {
 		_ = trx.Rollback()
 		if errors.Is(err, sql.ErrNoRows) {
@@ -99,7 +119,7 @@ func (h *WalletHandler) TransferWalletHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	toWalletCurrency, err := h.walletCurrencyRepository.FindByWalletIDAndCurrency(trx, request.ToWalletID, currency)
+	toWalletCurrency, err := h.walletCurrencyRepository.FindByWalletIDAndCurrency(trx, request.WalletIDDestination, destinationCurrency)
 	if err != nil {
 		_ = trx.Rollback()
 		if errors.Is(err, sql.ErrNoRows) {

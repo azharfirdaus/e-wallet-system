@@ -78,11 +78,11 @@ curl -X POST "$BASE_URL/wallets/1/pay" \
 Transfer to another wallet:
 
 ```sh
-curl -X POST "$BASE_URL/wallets/1/transfer" \
+curl -X POST "$BASE_URL/wallets/1/transfer/IDR" \
   -H "Content-Type: application/json" \
   -d '{
-    "to_wallet_id": 2,
-    "currency_code": "IDR",
+    "wallet_id_destination": 2,
+    "currency_code_destination": "IDR",
     "amount": "5000.00"
   }'
 ```
@@ -91,4 +91,10 @@ Suspend wallet:
 
 ```sh
 curl -X POST "$BASE_URL/wallets/1/suspend"
+```
+
+Update closing balances:
+
+```sh
+curl -X POST "$BASE_URL/wallet/update_close_balance"
 ```

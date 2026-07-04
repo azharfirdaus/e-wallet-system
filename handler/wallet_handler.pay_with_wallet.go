@@ -47,6 +47,11 @@ func (h *WalletHandler) PayWithWalletHandler(w http.ResponseWriter, r *http.Requ
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if err := acquireWalletWriteLock(trx); err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	wallet, err := h.walletRepository.FindByID(trx, walletID)
 	if err != nil {

@@ -28,9 +28,10 @@ func main() {
 	router.HandleFunc("/wallets", walletHandler.CreateWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/topup", walletHandler.TopUpWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/pay", walletHandler.PayWithWalletHandler).Methods(http.MethodPost)
-	router.HandleFunc("/wallets/{id}/transfer", walletHandler.TransferWalletHandler).Methods(http.MethodPost)
+	router.HandleFunc("/wallets/{id}/transfer/{country_code}", walletHandler.TransferWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/suspend", walletHandler.SuspendWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}", walletHandler.GetWalletHandler).Methods(http.MethodGet)
+	router.HandleFunc("/wallet/update_close_balance", walletHandler.UpdateCloseBalanceHandler).Methods(http.MethodPost)
 
 	log.Printf(
 		"postgres config loaded: host=%s port=%s database=%s user=%s sslmode=%s",

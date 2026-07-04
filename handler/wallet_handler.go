@@ -17,6 +17,8 @@ type WalletHandler struct {
 	ledgerRepository         repository.LedgerRepository
 }
 
+const walletWriteAdvisoryLockID int64 = 2026070401
+
 var amountLimitByCurrency = map[model.Currency]int64{
 	model.CurrencyIDR: 1_000_000_000, // 10,000,000.00
 	model.CurrencyUSD: 60_000,        // 600.00
@@ -45,6 +47,11 @@ func validateAmountLimit(amount int64, currency model.Currency) error {
 	}
 
 	return nil
+}
+
+func acquireWalletWriteLock(trx *sqlx.Tx) error {
+	_, err := trx.Exec("SELECT pg_advisory_xact_lock($1)", walletWriteAdvisoryLockID)
+	return err
 }
 
 func parseCurrency(currencyCode string) (model.Currency, error) {

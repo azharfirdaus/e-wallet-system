@@ -16,7 +16,7 @@ type PayWithWalletRequest struct {
 }
 
 type TransferWalletRequest struct {
-	CurrencyCode string `json:"currency_code"`
-	ToWalletID   int64  `json:"to_wallet_id"`
-	Amount       string `json:"amount"`
+	WalletIDDestination     int64  `json:"wallet_id_destination"`
+	CurrencyCodeDestination string `json:"currency_code_destination"`
+	Amount                  string `json:"amount"`
 }
