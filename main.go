@@ -20,15 +20,16 @@ func main() {
 	defer db.Close()
 
 	userHandler := handler.NewUserHandler(db)
+	walletHandler := handler.NewWalletHandler(db)
 
 	router := mux.NewRouter()
 
 	router.HandleFunc("/users", userHandler.CreateUserHandler).Methods(http.MethodPost)
-	router.HandleFunc("/wallets/{currency_code}", handler.CreateWalletHandler).Methods(http.MethodPost)
+	router.HandleFunc("/wallets", walletHandler.CreateWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/topup", handler.TopUpWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/pay", handler.PayWithWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/transfer", handler.TransferWalletHandler).Methods(http.MethodPost)
-	router.HandleFunc("/wallets/{id}/suspend", handler.SuspendWalletHandler).Methods(http.MethodPost)
+	router.HandleFunc("/wallets/{id}/suspend", walletHandler.SuspendWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}", handler.GetWalletHandler).Methods(http.MethodGet)
 
 	log.Printf(

@@ -1,43 +1,61 @@
 package repository
 
 import (
+	"database/sql"
+
 	"github.com/azharfirdaus/e-wallet-system/sql/model"
 	"github.com/jmoiron/sqlx"
 )
 
 type WalletRepository interface {
-	Insert(m *model.Wallet) (*int64, error)
+	Insert(trx *sqlx.Tx, m *model.Wallet) (*int64, error)
+	Suspend(trx *sqlx.Tx, id int64) error
 }
 
-type WalletRepositoryImpl struct {
-	db *sqlx.DB
+type WalletRepositoryImpl struct{}
+
+func NewWalletRepository() *WalletRepositoryImpl {
+	return &WalletRepositoryImpl{}
 }
 
-func NewWalletRepository(db *sqlx.DB) *WalletRepositoryImpl {
-	return &WalletRepositoryImpl{db: db}
-}
-
-func (w *WalletRepositoryImpl) Insert(m *model.Wallet) (*int64, error) {
-	trx, err := w.db.Beginx()
-	if err != nil {
-		return nil, err
-	}
-
+func (w *WalletRepositoryImpl) Insert(trx *sqlx.Tx, m *model.Wallet) (*int64, error) {
 	query := `
-		INSERT INTO public.wallets (user_id, status)
-		VALUES ($1, $2)
-		RETURNING id
+		INSERT INTO public.wallets (user_id, status, closing_balance)
+		VALUES ($1, $2, $3)
+		RETURNING id, closing_balance, closing_balance_updated_at
 	`
 
 	var id int64
-	if err := trx.QueryRowx(query, m.UserID, m.Status).Scan(&id); err != nil {
-		_ = trx.Rollback()
-		return nil, err
-	}
-
-	if err := trx.Commit(); err != nil {
+	if err := trx.QueryRowx(query, m.UserID, m.Status, m.ClosingBalance).Scan(
+		&id,
+		&m.ClosingBalance,
+		&m.ClosingBalanceUpdatedAt,
+	); err != nil {
 		return nil, err
 	}
 
 	return &id, nil
+}
+
+func (w *WalletRepositoryImpl) Suspend(trx *sqlx.Tx, id int64) error {
+	result, err := trx.Exec(
+		`UPDATE public.wallets
+		 SET status = $1
+		 WHERE id = $2`,
+		model.WalletStatusSuspended,
+		id,
+	)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
