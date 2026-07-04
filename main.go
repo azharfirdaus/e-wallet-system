@@ -28,7 +28,7 @@ func main() {
 	router.HandleFunc("/wallets", walletHandler.CreateWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/topup", walletHandler.TopUpWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/pay", walletHandler.PayWithWalletHandler).Methods(http.MethodPost)
-	router.HandleFunc("/wallets/{id}/transfer", handler.TransferWalletHandler).Methods(http.MethodPost)
+	router.HandleFunc("/wallets/{id}/transfer", walletHandler.TransferWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/suspend", walletHandler.SuspendWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}", walletHandler.GetWalletHandler).Methods(http.MethodGet)
 

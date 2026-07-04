@@ -1,7 +1,105 @@
 package handler
 
-import "net/http"
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"strconv"
 
-func TransferWalletHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
+	handlermodel "github.com/azharfirdaus/e-wallet-system/handler/model"
+	"github.com/azharfirdaus/e-wallet-system/helper"
+	"github.com/azharfirdaus/e-wallet-system/sql/model"
+	"github.com/gorilla/mux"
+)
+
+func (h *WalletHandler) TransferWalletHandler(w http.ResponseWriter, r *http.Request) {
+	walletID, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	if err != nil || walletID <= 0 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var request handlermodel.TransferWalletRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if request.ToWalletID <= 0 {
+		http.Error(w, "to_wallet_id is required", http.StatusBadRequest)
+		return
+	}
+	if request.ToWalletID == walletID {
+		http.Error(w, "to_wallet_id must be different from wallet id", http.StatusBadRequest)
+		return
+	}
+
+	amount, err := helper.ParseAmountMinorUnit(request.Amount)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	currency, err := parseCurrency(request.CurrencyCode)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	trx, err := h.db.Beginx()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	fromWalletCurrency, err := h.walletCurrencyRepository.FindByWalletIDAndCurrency(trx, walletID, currency)
+	if err != nil {
+		_ = trx.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "wallet currency not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	toWalletCurrency, err := h.walletCurrencyRepository.FindByWalletIDAndCurrency(trx, request.ToWalletID, currency)
+	if err != nil {
+		_ = trx.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "destination wallet currency not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := h.ledgerRepository.Insert(trx, &model.Ledger{
+		WalletCurrencyID: fromWalletCurrency.ID,
+		Debit:            amount,
+		Credit:           0,
+		Reference:        model.LedgerReferenceTransfer,
+	}); err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := h.ledgerRepository.Insert(trx, &model.Ledger{
+		WalletCurrencyID: toWalletCurrency.ID,
+		Debit:            0,
+		Credit:           amount,
+		Reference:        model.LedgerReferenceReceive,
+	}); err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := trx.Commit(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

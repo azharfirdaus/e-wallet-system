@@ -71,5 +71,5 @@ func (h *WalletHandler) TopUpWalletHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
 }

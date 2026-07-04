@@ -71,5 +71,5 @@ func (h *WalletHandler) PayWithWalletHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
 }
