@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/azharfirdaus/e-wallet-system/config"
+	postgresdb "github.com/azharfirdaus/e-wallet-system/db"
 	"github.com/azharfirdaus/e-wallet-system/handler"
 	"github.com/gorilla/mux"
 )
@@ -15,9 +16,14 @@ func main() {
 		log.Fatal(err)
 	}
 
+	db := postgresdb.NewPostgres(postgresConfig.DSN())
+	defer db.Close()
+
+	userHandler := handler.NewUserHandler(db)
+
 	router := mux.NewRouter()
 
-	router.HandleFunc("/users", handler.CreateUserHandler).Methods(http.MethodPost)
+	router.HandleFunc("/users", userHandler.CreateUserHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{currency_code}", handler.CreateWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/topup", handler.TopUpWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/pay", handler.PayWithWalletHandler).Methods(http.MethodPost)
