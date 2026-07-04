@@ -37,6 +37,10 @@ func (h *WalletHandler) TopUpWalletHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
+	if err := validateAmountLimit(amount, currency); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 
 	trx, err := h.db.Beginx()
 	if err != nil {

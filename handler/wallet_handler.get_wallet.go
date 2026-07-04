@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -76,10 +77,18 @@ func (h *WalletHandler) GetWalletHandler(w http.ResponseWriter, r *http.Request)
 		response = append(response, handlermodel.GetWalletResponse{
 			WalletCurrencyID: walletCurrency.ID,
 			CurrencyCode:     string(walletCurrency.Currency),
-			Balance:          ledgerSum.Credit - ledgerSum.Debit,
+			Balance:          formatBalance(ledgerSum.Credit - ledgerSum.Debit),
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(response)
+}
+
+func formatBalance(balance int64) string {
+	if balance < 0 {
+		return fmt.Sprintf("-%d.%02d", (-balance)/100, (-balance)%100)
+	}
+
+	return fmt.Sprintf("%d.%02d", balance/100, balance%100)
 }

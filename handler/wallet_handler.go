@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/azharfirdaus/e-wallet-system/sql/model"
@@ -16,6 +17,15 @@ type WalletHandler struct {
 	ledgerRepository         repository.LedgerRepository
 }
 
+var amountLimitByCurrency = map[model.Currency]int64{
+	model.CurrencyIDR: 1_000_000_000, // 10,000,000.00
+	model.CurrencyUSD: 60_000,        // 600.00
+	model.CurrencySGD: 78_000,        // 780.00
+	model.CurrencyJPY: 9_000_000,     // 90,000.00
+	model.CurrencyAUD: 93_000,        // 930.00
+	model.CurrencyCNY: 440_000,       // 4,400.00
+}
+
 func NewWalletHandler(db *sqlx.DB) *WalletHandler {
 	return &WalletHandler{
 		db:                       db,
@@ -23,6 +33,18 @@ func NewWalletHandler(db *sqlx.DB) *WalletHandler {
 		walletCurrencyRepository: repository.NewWalletCurrencyRepository(),
 		ledgerRepository:         repository.NewLedgerRepository(),
 	}
+}
+
+func validateAmountLimit(amount int64, currency model.Currency) error {
+	limit, ok := amountLimitByCurrency[currency]
+	if !ok {
+		return errors.New("unsupported currency_code")
+	}
+	if amount > limit {
+		return fmt.Errorf("amount exceeds %s limit", currency)
+	}
+
+	return nil
 }
 
 func parseCurrency(currencyCode string) (model.Currency, error) {

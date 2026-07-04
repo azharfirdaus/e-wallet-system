@@ -45,6 +45,10 @@ func (h *WalletHandler) TransferWalletHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
 		return
 	}
+	if err := validateAmountLimit(amount, currency); err != nil {
+		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
 
 	trx, err := h.db.Beginx()
 	if err != nil {
