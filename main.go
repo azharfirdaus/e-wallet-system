@@ -8,6 +8,11 @@ import (
 )
 
 func main() {
+	postgresConfig, err := LoadPostgresConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	router := mux.NewRouter()
 
 	router.HandleFunc("/users", createUserHandler).Methods(http.MethodPost)
@@ -17,6 +22,15 @@ func main() {
 	router.HandleFunc("/wallets/{id}/transfer", transferWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/suspend", suspendWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}", getWalletHandler).Methods(http.MethodGet)
+
+	log.Printf(
+		"postgres config loaded: host=%s port=%s database=%s user=%s sslmode=%s",
+		postgresConfig.Host,
+		postgresConfig.Port,
+		postgresConfig.Database,
+		postgresConfig.User,
+		postgresConfig.SSLMode,
+	)
 
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

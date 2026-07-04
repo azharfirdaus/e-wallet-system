@@ -21,6 +21,12 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: e_wallet
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_SSLMODE: disable
       DATABASE_URL: postgres://admin:password@postgres:5432/e_wallet?sslmode=disable
     ports:
       - "8080:8080"
