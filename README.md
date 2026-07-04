@@ -1,4 +1,35 @@
-# e-wallet-system
+# E Wallet System
+
+## Overview
+
+This project is a Go-based e-wallet API backed by PostgreSQL. It supports user wallet creation, multi-currency wallet balances, top up, payment, transfer, wallet suspension, and closing-balance rollups from ledger entries.
+
+## Features
+
+### Functional
+
+- Create users and wallets
+- Add multiple currencies to one wallet
+- Top up wallet balance
+- Pay using wallet balance
+- Transfer balance between wallets
+- Suspend wallets
+- View wallet balances by currency and status
+- Update closing balances from ledger entries
+
+### Non Functional
+
+- PostgreSQL-backed persistence
+- Transactional wallet operations
+- Ledger-based balance calculation
+- Advisory locking for wallet write consistency
+- Docker Compose setup for local development
+
+## Decisions
+
+- Amounts use two decimal digits and are stored as minor units to prevent unnecessary floating-point rounding mismatches.
+- Rounding up or down is not used because it can introduce floating-point overflow or precision issues that may write incorrect ledger records.
+- `BIGINT` is used for monetary values so minor units can be preserved without floating-point overflow risk.
 
 ## Run with Docker Compose
 
