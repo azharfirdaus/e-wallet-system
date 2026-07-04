@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: e_wallet
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_18_data:/var/lib/postgresql
+      - ./migration:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d e_wallet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: e_wallet
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_SSLMODE: disable
+      DATABASE_URL: postgres://admin:password@postgres:5432/e_wallet?sslmode=disable
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_18_data:
