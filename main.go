@@ -30,7 +30,7 @@ func main() {
 	router.HandleFunc("/wallets/{id}/pay", handler.PayWithWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/transfer", handler.TransferWalletHandler).Methods(http.MethodPost)
 	router.HandleFunc("/wallets/{id}/suspend", walletHandler.SuspendWalletHandler).Methods(http.MethodPost)
-	router.HandleFunc("/wallets/{id}", handler.GetWalletHandler).Methods(http.MethodGet)
+	router.HandleFunc("/wallets/{id}", walletHandler.GetWalletHandler).Methods(http.MethodGet)
 
 	log.Printf(
 		"postgres config loaded: host=%s port=%s database=%s user=%s sslmode=%s",

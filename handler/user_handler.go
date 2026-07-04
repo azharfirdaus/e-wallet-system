@@ -11,11 +11,15 @@ import (
 )
 
 type UserHandler struct {
-	db *sqlx.DB
+	db             *sqlx.DB
+	userRepository repository.UserRepository
 }
 
 func NewUserHandler(db *sqlx.DB) *UserHandler {
-	return &UserHandler{db: db}
+	return &UserHandler{
+		db:             db,
+		userRepository: repository.NewUserRepository(),
+	}
 }
 
 func (h *UserHandler) CreateUserHandler(w http.ResponseWriter, _ *http.Request) {
@@ -25,8 +29,7 @@ func (h *UserHandler) CreateUserHandler(w http.ResponseWriter, _ *http.Request) 
 		return
 	}
 
-	userRepository := repository.NewUserRepository()
-	id, err := userRepository.Insert(trx, &model.User{})
+	id, err := h.userRepository.Insert(trx, &model.User{})
 	if err != nil {
 		_ = trx.Rollback()
 		http.Error(w, err.Error(), http.StatusInternalServerError)

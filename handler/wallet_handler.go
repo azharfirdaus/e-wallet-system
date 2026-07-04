@@ -16,11 +16,19 @@ import (
 )
 
 type WalletHandler struct {
-	db *sqlx.DB
+	db                       *sqlx.DB
+	walletRepository         repository.WalletRepository
+	walletCurrencyRepository repository.WalletCurrencyRepository
+	ledgerRepository         repository.LedgerRepository
 }
 
 func NewWalletHandler(db *sqlx.DB) *WalletHandler {
-	return &WalletHandler{db: db}
+	return &WalletHandler{
+		db:                       db,
+		walletRepository:         repository.NewWalletRepository(),
+		walletCurrencyRepository: repository.NewWalletCurrencyRepository(),
+		ledgerRepository:         repository.NewLedgerRepository(),
+	}
 }
 
 func (h *WalletHandler) CreateWalletHandler(w http.ResponseWriter, r *http.Request) {
@@ -46,8 +54,7 @@ func (h *WalletHandler) CreateWalletHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	walletRepository := repository.NewWalletRepository()
-	walletID, err := walletRepository.Insert(trx, &model.Wallet{
+	walletID, err := h.walletRepository.Insert(trx, &model.Wallet{
 		UserID: request.UserID,
 		Status: model.WalletStatusActivate,
 	})
@@ -57,8 +64,7 @@ func (h *WalletHandler) CreateWalletHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	walletCurrencyRepository := repository.NewWalletCurrencyRepository()
-	if _, err := walletCurrencyRepository.Insert(trx, &model.WalletCurrency{
+	if _, err := h.walletCurrencyRepository.Insert(trx, &model.WalletCurrency{
 		WalletID: *walletID,
 		Currency: currency,
 	}); err != nil {
@@ -120,8 +126,7 @@ func (h *WalletHandler) SuspendWalletHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	walletRepository := repository.NewWalletRepository()
-	if err := walletRepository.Suspend(trx, walletID); err != nil {
+	if err := h.walletRepository.Suspend(trx, walletID); err != nil {
 		_ = trx.Rollback()
 		if errors.Is(err, sql.ErrNoRows) {
 			http.Error(w, "wallet not found", http.StatusNotFound)
@@ -139,6 +144,69 @@ func (h *WalletHandler) SuspendWalletHandler(w http.ResponseWriter, r *http.Requ
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func GetWalletHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
+func (h *WalletHandler) GetWalletHandler(w http.ResponseWriter, r *http.Request) {
+	walletID, err := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	if err != nil || walletID <= 0 {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	trx, err := h.db.Beginx()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	wallet, err := h.walletRepository.FindByID(trx, walletID)
+	if err != nil {
+		_ = trx.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "wallet not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	walletCurrencies, err := h.walletCurrencyRepository.FindByWalletID(trx, walletID)
+	if err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if len(walletCurrencies) == 0 {
+		_ = trx.Rollback()
+		http.Error(w, "wallet currency not found", http.StatusNotFound)
+		return
+	}
+
+	ledgerSums, err := h.ledgerRepository.SumByWalletCurrencyID(trx, wallet.ClosingBalanceUpdatedAt)
+	if err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := trx.Commit(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	ledgerSumByWalletCurrencyID := make(map[int64]model.LedgerSum, len(ledgerSums))
+	for _, ledgerSum := range ledgerSums {
+		ledgerSumByWalletCurrencyID[ledgerSum.WalletCurrencyID] = ledgerSum
+	}
+
+	response := make([]handlermodel.GetWalletResponse, 0, len(walletCurrencies))
+	for _, walletCurrency := range walletCurrencies {
+		ledgerSum := ledgerSumByWalletCurrencyID[walletCurrency.ID]
+		response = append(response, handlermodel.GetWalletResponse{
+			WalletCurrencyID: walletCurrency.ID,
+			CurrencyCode:     string(walletCurrency.Currency),
+			Balance:          ledgerSum.Credit - ledgerSum.Debit,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(response)
 }

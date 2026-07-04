@@ -9,6 +9,7 @@ import (
 
 type WalletRepository interface {
 	Insert(trx *sqlx.Tx, m *model.Wallet) (*int64, error)
+	FindByID(trx *sqlx.Tx, id int64) (*model.Wallet, error)
 	Suspend(trx *sqlx.Tx, id int64) error
 }
 
@@ -35,6 +36,28 @@ func (w *WalletRepositoryImpl) Insert(trx *sqlx.Tx, m *model.Wallet) (*int64, er
 	}
 
 	return &id, nil
+}
+
+func (w *WalletRepositoryImpl) FindByID(trx *sqlx.Tx, id int64) (*model.Wallet, error) {
+	query := `
+		SELECT
+			id,
+			user_id,
+			status,
+			closing_balance,
+			closing_balance_updated_at,
+			created_at,
+			updated_at
+		FROM public.wallets
+		WHERE id = $1
+	`
+
+	wallet := model.Wallet{}
+	if err := trx.QueryRowx(query, id).StructScan(&wallet); err != nil {
+		return nil, err
+	}
+
+	return &wallet, nil
 }
 
 func (w *WalletRepositoryImpl) Suspend(trx *sqlx.Tx, id int64) error {
