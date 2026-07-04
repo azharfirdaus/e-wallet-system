@@ -21,11 +21,15 @@ func (w *WalletCurrencyRepositoryImpl) Insert(trx *sqlx.Tx, m *model.WalletCurre
 	query := `
 		INSERT INTO public.wallets_currency (wallet_id, currency)
 		VALUES ($1, $2)
-		RETURNING id
+		RETURNING id, closing_balance, closing_balance_updated_at
 	`
 
 	var id int64
-	if err := trx.QueryRowx(query, m.WalletID, m.Currency).Scan(&id); err != nil {
+	if err := trx.QueryRowx(query, m.WalletID, m.Currency).Scan(
+		&id,
+		&m.ClosingBalance,
+		&m.ClosingBalanceUpdatedAt,
+	); err != nil {
 		return nil, err
 	}
 
@@ -41,6 +45,8 @@ func (w *WalletCurrencyRepositoryImpl) FindByWalletID(
 			id,
 			wallet_id,
 			currency,
+			closing_balance,
+			closing_balance_updated_at,
 			created_at,
 			updated_at
 		FROM public.wallets_currency
@@ -66,6 +72,8 @@ func (w *WalletCurrencyRepositoryImpl) FindByWalletIDAndCurrency(
 			id,
 			wallet_id,
 			currency,
+			closing_balance,
+			closing_balance_updated_at,
 			created_at,
 			updated_at
 		FROM public.wallets_currency

@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	handlermodel "github.com/azharfirdaus/e-wallet-system/handler/model"
-	"github.com/azharfirdaus/e-wallet-system/sql/model"
 	"github.com/gorilla/mux"
 )
 
@@ -36,11 +35,6 @@ func (h *WalletHandler) GetWalletHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if wallet.Status != model.WalletStatusActivate {
-		_ = trx.Rollback()
-		http.Error(w, "wallet not found", http.StatusNotFound)
-		return
-	}
 
 	walletCurrencies, err := h.walletCurrencyRepository.FindByWalletID(trx, walletID)
 	if err != nil {
@@ -54,31 +48,30 @@ func (h *WalletHandler) GetWalletHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	ledgerSums, err := h.ledgerRepository.SumByWalletCurrencyID(trx, wallet.ClosingBalanceUpdatedAt)
-	if err != nil {
-		_ = trx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	response := make([]handlermodel.GetWalletResponse, 0, len(walletCurrencies))
+	for _, walletCurrency := range walletCurrencies {
+		ledgerSum, err := h.ledgerRepository.SumOneByWalletCurrencyID(
+			trx,
+			walletCurrency.ID,
+			walletCurrency.ClosingBalanceUpdatedAt,
+		)
+		if err != nil {
+			_ = trx.Rollback()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		balance := walletCurrency.ClosingBalance + ledgerSum.Credit - ledgerSum.Debit
+		response = append(response, handlermodel.GetWalletResponse{
+			WalletCurrencyID: walletCurrency.ID,
+			CurrencyCode:     string(walletCurrency.Currency),
+			Status:           string(wallet.Status),
+			Balance:          formatBalance(balance),
+		})
 	}
 
 	if err := trx.Commit(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-
-	ledgerSumByWalletCurrencyID := make(map[int64]model.LedgerSum, len(ledgerSums))
-	for _, ledgerSum := range ledgerSums {
-		ledgerSumByWalletCurrencyID[ledgerSum.WalletCurrencyID] = ledgerSum
-	}
-
-	response := make([]handlermodel.GetWalletResponse, 0, len(walletCurrencies))
-	for _, walletCurrency := range walletCurrencies {
-		ledgerSum := ledgerSumByWalletCurrencyID[walletCurrency.ID]
-		response = append(response, handlermodel.GetWalletResponse{
-			WalletCurrencyID: walletCurrency.ID,
-			CurrencyCode:     string(walletCurrency.Currency),
-			Balance:          formatBalance(ledgerSum.Credit - ledgerSum.Debit),
-		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

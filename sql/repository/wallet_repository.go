@@ -10,6 +10,7 @@ import (
 type WalletRepository interface {
 	Insert(trx *sqlx.Tx, m *model.Wallet) (*int64, error)
 	FindByID(trx *sqlx.Tx, id int64) (*model.Wallet, error)
+	FindByUserID(trx *sqlx.Tx, userID int64) (*model.Wallet, error)
 	Suspend(trx *sqlx.Tx, id int64) error
 }
 
@@ -21,17 +22,13 @@ func NewWalletRepository() *WalletRepositoryImpl {
 
 func (w *WalletRepositoryImpl) Insert(trx *sqlx.Tx, m *model.Wallet) (*int64, error) {
 	query := `
-		INSERT INTO public.wallets (user_id, status, closing_balance)
-		VALUES ($1, $2, $3)
-		RETURNING id, closing_balance, closing_balance_updated_at
+		INSERT INTO public.wallets (user_id, status)
+		VALUES ($1, $2)
+		RETURNING id
 	`
 
 	var id int64
-	if err := trx.QueryRowx(query, m.UserID, m.Status, m.ClosingBalance).Scan(
-		&id,
-		&m.ClosingBalance,
-		&m.ClosingBalanceUpdatedAt,
-	); err != nil {
+	if err := trx.QueryRowx(query, m.UserID, m.Status).Scan(&id); err != nil {
 		return nil, err
 	}
 
@@ -44,8 +41,6 @@ func (w *WalletRepositoryImpl) FindByID(trx *sqlx.Tx, id int64) (*model.Wallet, 
 			id,
 			user_id,
 			status,
-			closing_balance,
-			closing_balance_updated_at,
 			created_at,
 			updated_at
 		FROM public.wallets
@@ -54,6 +49,28 @@ func (w *WalletRepositoryImpl) FindByID(trx *sqlx.Tx, id int64) (*model.Wallet, 
 
 	wallet := model.Wallet{}
 	if err := trx.QueryRowx(query, id).StructScan(&wallet); err != nil {
+		return nil, err
+	}
+
+	return &wallet, nil
+}
+
+func (w *WalletRepositoryImpl) FindByUserID(trx *sqlx.Tx, userID int64) (*model.Wallet, error) {
+	query := `
+		SELECT
+			id,
+			user_id,
+			status,
+			created_at,
+			updated_at
+		FROM public.wallets
+		WHERE user_id = $1
+		ORDER BY id
+		LIMIT 1
+	`
+
+	wallet := model.Wallet{}
+	if err := trx.QueryRowx(query, userID).StructScan(&wallet); err != nil {
 		return nil, err
 	}
 

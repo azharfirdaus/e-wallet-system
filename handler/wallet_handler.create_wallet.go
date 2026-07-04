@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	handlermodel "github.com/azharfirdaus/e-wallet-system/handler/model"
@@ -31,18 +33,32 @@ func (h *WalletHandler) CreateWalletHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	walletID, err := h.walletRepository.Insert(trx, &model.Wallet{
-		UserID: request.UserID,
-		Status: model.WalletStatusActivate,
-	})
+	wallet, err := h.walletRepository.FindByUserID(trx, request.UserID)
 	if err != nil {
-		_ = trx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		if errors.Is(err, sql.ErrNoRows) {
+			walletID, err := h.walletRepository.Insert(trx, &model.Wallet{
+				UserID: request.UserID,
+				Status: model.WalletStatusActivate,
+			})
+			if err != nil {
+				_ = trx.Rollback()
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			wallet = &model.Wallet{
+				ID:     *walletID,
+				UserID: request.UserID,
+				Status: model.WalletStatusActivate,
+			}
+		} else {
+			_ = trx.Rollback()
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 
 	if _, err := h.walletCurrencyRepository.Insert(trx, &model.WalletCurrency{
-		WalletID: *walletID,
+		WalletID: wallet.ID,
 		Currency: currency,
 	}); err != nil {
 		_ = trx.Rollback()
@@ -58,7 +74,7 @@ func (h *WalletHandler) CreateWalletHandler(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(handlermodel.CreateWalletResponse{
-		WalletID:     *walletID,
+		WalletID:     wallet.ID,
 		CurrencyCode: string(currency),
 	})
 }

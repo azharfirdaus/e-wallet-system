@@ -66,11 +66,11 @@ func (l *LedgerRepositoryImpl) SumOneByWalletCurrencyID(
 ) (*model.LedgerSum, error) {
 	query := `
 		SELECT
-			$1 AS wallet_currency_id,
+			$1::BIGINT AS wallet_currency_id,
 			COALESCE(SUM(debit), 0) AS debit,
 			COALESCE(SUM(credit), 0) AS credit
 		FROM public.ledger
-		WHERE wallet_currency_id = $1
+		WHERE wallet_currency_id = $1::BIGINT
 			AND created_at > $2
 	`
 
