@@ -9,3 +9,8 @@ type TopUpWalletRequest struct {
 	CurrencyCode string `json:"currency_code"`
 	Amount       string `json:"amount"`
 }
+
+type PayWithWalletRequest struct {
+	CurrencyCode string `json:"currency_code"`
+	Amount       string `json:"amount"`
+}
