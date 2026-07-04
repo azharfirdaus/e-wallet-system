@@ -1,16 +1,16 @@
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:18
     environment:
-      POSTGRES_DB: e_wallet_system
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: e_wallet
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_18_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d e_wallet_system"]
+      test: ["CMD-SHELL", "pg_isready -U admin -d e_wallet"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,9 +21,9 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/e_wallet_system?sslmode=disable
+      DATABASE_URL: postgres://admin:password@postgres:5432/e_wallet?sslmode=disable
     ports:
       - "8080:8080"
 
 volumes:
-  postgres_data:
+  postgres_18_data:

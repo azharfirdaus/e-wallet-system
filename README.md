@@ -12,9 +12,9 @@ The app runs at `http://localhost:8080`.
 
 PostgreSQL runs on `localhost:5432` with:
 
-- database: `e_wallet_system`
-- user: `postgres`
-- password: `postgres`
+- database: `e_wallet`
+- user: `admin`
+- password: `password`
 
 Stop the containers:
 
