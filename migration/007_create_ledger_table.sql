@@ -1,7 +1,7 @@
-CREATE TYPE public.ledger_referrence AS ENUM (
+CREATE TYPE public.ledger_reference AS ENUM (
     'TOPUP',
     'PAYMENT',
-    'SEND',
+    'TRANSFER',
     'RECEIVE'
 );
 
