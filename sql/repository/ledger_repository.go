@@ -10,6 +10,7 @@ import (
 type LedgerRepository interface {
 	Insert(trx *sqlx.Tx, m *model.Ledger) (*int64, error)
 	SumByWalletCurrencyID(trx *sqlx.Tx, afterCreatedAt time.Time) ([]model.LedgerSum, error)
+	SumOneByWalletCurrencyID(trx *sqlx.Tx, walletCurrencyID int64, afterCreatedAt time.Time) (*model.LedgerSum, error)
 }
 
 type LedgerRepositoryImpl struct{}
@@ -56,4 +57,27 @@ func (l *LedgerRepositoryImpl) SumByWalletCurrencyID(
 	}
 
 	return sums, nil
+}
+
+func (l *LedgerRepositoryImpl) SumOneByWalletCurrencyID(
+	trx *sqlx.Tx,
+	walletCurrencyID int64,
+	afterCreatedAt time.Time,
+) (*model.LedgerSum, error) {
+	query := `
+		SELECT
+			$1 AS wallet_currency_id,
+			COALESCE(SUM(debit), 0) AS debit,
+			COALESCE(SUM(credit), 0) AS credit
+		FROM public.ledger
+		WHERE wallet_currency_id = $1
+			AND created_at > $2
+	`
+
+	sum := model.LedgerSum{}
+	if err := trx.QueryRowx(query, walletCurrencyID, afterCreatedAt).StructScan(&sum); err != nil {
+		return nil, err
+	}
+
+	return &sum, nil
 }

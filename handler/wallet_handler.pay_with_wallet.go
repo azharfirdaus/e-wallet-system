@@ -75,6 +75,22 @@ func (h *WalletHandler) PayWithWalletHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	ledgerSum, err := h.ledgerRepository.SumOneByWalletCurrencyID(
+		trx,
+		walletCurrency.ID,
+		wallet.ClosingBalanceUpdatedAt,
+	)
+	if err != nil {
+		_ = trx.Rollback()
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if ledgerSum.Credit-ledgerSum.Debit < amount {
+		_ = trx.Rollback()
+		http.Error(w, "insufficient amount", http.StatusUnprocessableEntity)
+		return
+	}
+
 	if _, err := h.ledgerRepository.Insert(trx, &model.Ledger{
 		WalletCurrencyID: walletCurrency.ID,
 		Debit:            amount,
