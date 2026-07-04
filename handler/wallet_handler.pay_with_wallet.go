@@ -44,6 +44,22 @@ func (h *WalletHandler) PayWithWalletHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	wallet, err := h.walletRepository.FindByID(trx, walletID)
+	if err != nil {
+		_ = trx.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "wallet not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if wallet.Status != model.WalletStatusActivate {
+		_ = trx.Rollback()
+		http.Error(w, "wallet is not activated", http.StatusUnprocessableEntity)
+		return
+	}
+
 	walletCurrency, err := h.walletCurrencyRepository.FindByWalletIDAndCurrency(trx, walletID, currency)
 	if err != nil {
 		_ = trx.Rollback()

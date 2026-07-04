@@ -35,6 +35,11 @@ func (h *WalletHandler) GetWalletHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if wallet.Status != model.WalletStatusActivate {
+		_ = trx.Rollback()
+		http.Error(w, "wallet not found", http.StatusNotFound)
+		return
+	}
 
 	walletCurrencies, err := h.walletCurrencyRepository.FindByWalletID(trx, walletID)
 	if err != nil {

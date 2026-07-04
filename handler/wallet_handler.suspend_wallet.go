@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/azharfirdaus/e-wallet-system/sql/model"
 	"github.com/gorilla/mux"
 )
 
@@ -19,6 +20,22 @@ func (h *WalletHandler) SuspendWalletHandler(w http.ResponseWriter, r *http.Requ
 	trx, err := h.db.Beginx()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	wallet, err := h.walletRepository.FindByID(trx, walletID)
+	if err != nil {
+		_ = trx.Rollback()
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "wallet not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if wallet.Status == model.WalletStatusSuspended {
+		_ = trx.Rollback()
+		http.Error(w, "wallet is already suspended", http.StatusUnprocessableEntity)
 		return
 	}
 
