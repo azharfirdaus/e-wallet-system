@@ -10,6 +10,7 @@ CREATE TABLE public.ledger (
     wallet_currency_id BIGINT NOT NULL,
     debit BIGINT NOT NULL DEFAULT 0,
     credit BIGINT NOT NULL DEFAULT 0,
+    reference public.ledger_reference NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_ledger_wallet_currency_id
         FOREIGN KEY (wallet_currency_id)

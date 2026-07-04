@@ -8,6 +8,7 @@ import (
 type WalletCurrencyRepository interface {
 	Insert(trx *sqlx.Tx, m *model.WalletCurrency) (*int64, error)
 	FindByWalletID(trx *sqlx.Tx, walletID int64) ([]model.WalletCurrency, error)
+	FindByWalletIDAndCurrency(trx *sqlx.Tx, walletID int64, currency model.Currency) (*model.WalletCurrency, error)
 }
 
 type WalletCurrencyRepositoryImpl struct{}
@@ -53,4 +54,29 @@ func (w *WalletCurrencyRepositoryImpl) FindByWalletID(
 	}
 
 	return walletCurrencies, nil
+}
+
+func (w *WalletCurrencyRepositoryImpl) FindByWalletIDAndCurrency(
+	trx *sqlx.Tx,
+	walletID int64,
+	currency model.Currency,
+) (*model.WalletCurrency, error) {
+	query := `
+		SELECT
+			id,
+			wallet_id,
+			currency,
+			created_at,
+			updated_at
+		FROM public.wallets_currency
+		WHERE wallet_id = $1
+			AND currency = $2
+	`
+
+	walletCurrency := model.WalletCurrency{}
+	if err := trx.QueryRowx(query, walletID, currency).StructScan(&walletCurrency); err != nil {
+		return nil, err
+	}
+
+	return &walletCurrency, nil
 }

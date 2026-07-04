@@ -20,13 +20,13 @@ func NewLedgerRepository() *LedgerRepositoryImpl {
 
 func (l *LedgerRepositoryImpl) Insert(trx *sqlx.Tx, m *model.Ledger) (*int64, error) {
 	query := `
-		INSERT INTO public.ledger (wallet_currency_id, debit, credit)
-		VALUES ($1, $2, $3)
+		INSERT INTO public.ledger (wallet_currency_id, debit, credit, reference)
+		VALUES ($1, $2, $3, $4)
 		RETURNING id, created_at
 	`
 
 	var id int64
-	if err := trx.QueryRowx(query, m.WalletCurrencyID, m.Debit, m.Credit).Scan(
+	if err := trx.QueryRowx(query, m.WalletCurrencyID, m.Debit, m.Credit, m.Reference).Scan(
 		&id,
 		&m.CreatedAt,
 	); err != nil {

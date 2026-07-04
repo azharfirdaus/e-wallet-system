@@ -4,3 +4,8 @@ type CreateWalletRequest struct {
 	UserID       int64  `json:"user_id"`
 	CurrencyCode string `json:"currency_code"`
 }
+
+type TopUpWalletRequest struct {
+	CurrencyCode string `json:"currency_code"`
+	Amount       string `json:"amount"`
+}
